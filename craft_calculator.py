@@ -3,38 +3,47 @@
 from csvtable import CSVTable
 import yaml
 import numpy as np
+import argparse
 
 # TODO Tests
 # TODO Unix-like interface
+# TODO Doc-strings
 
-# Global constants
-g_const 
+# Global constants, gathered dierctly from game
+g_const =\
 {
+  # Tiers
   'min_tier': 4,
   'max_tier': 8,
+  # Enchantments
   'min_ench': 0,
   'max_ench': 3,
+  # Item value to food convertation coefficient
   'item_value2food': 0.1125,
+  # Coeffs to compute resource item value'
   'res_item_value_base': 2,
   'res_item_value_coeff': 2,
+  # Coeffs to compute fame
   'base_fame_coeffs': [22.5, 90, 270, 645, 1395],
-  'royal_fame_coefffs': [2.5, 5, 10, 10, 10],
+  'fame_factor': 2,
+  # Premium bonus coefficient
   'premium_bonus': 1.5,
+  # Coeffs to compute focus cost from focus efficienty
   'focus_cost_coeff': 2,
   'focus_cost_divider': 10000,
+  # Royal artifacts ammount per slot and tier
   'royal': 
   {
     'head': [4, 8, 16, 16, 16],
     'body': [2, 4,  8,  8,  8],
     'legs': [2, 4,  8,  8,  8],
   },
-  'fame_per_journal': [3600, 7200, 14400, 28380, 58590]
+  # Journals fame coeffs
+  'fame_per_journal': [3600, 7200, 14400, 28380, 58590],
+  # List of supported slots
   'slots': ['head', 'body', 'legs', 'right-hand', 'left-hand', 'two-handed'],
+  # Coeff to compute artifact item values 
   'artifact_item_value_coeff': 2,
-  'base_mastery_eff': 30,
-  'base_mastery_qual': 0.75,
-  'main_mastery_eff': 250,
-  'main_mastery_qual': 6,
 }
 
 
@@ -42,9 +51,9 @@ g_const
 def assert_tier_ench(tier, ench):
   tier = int(tier)
   ench = int(ench)
-  if not g_const['min_tier']  <= tier <= g_const['max_tier']
+  if not g_const['min_tier']  <= tier <= g_const['max_tier']:
     raise ValueError('Bad tier')
-  if not g_const['min_ench'] <= ench <= g_const['max_tier']
+  if not g_const['min_ench'] <= ench <= g_const['max_tier']:
     raise ValueError('Bad enchantment level')
 
   return tier, ench
@@ -61,7 +70,7 @@ def assert_type(obj, name, type2check, *, convert=True):
     obj = type2check(obj)
   except:
     raise TypeError(f'Can\'t convert \'{name}\' to {type2check}')
-  else
+  else:
     return obj
 
 def yaml_load(fname):
@@ -71,17 +80,44 @@ def yaml_load(fname):
   return data
 
 def die(message):
-  print(message)
-  print('Fatal error; can\'t continue work')
-  exit(1)
+  raise RuntimeError(message)
+
+def run_test_case(name, args_generator, func, comparator):
+  print(f'Running test \'{name}\'...', end=' ')
+  args, kwargs = args_generator()
+  result = func(*args, **kwargs)
+  if comparator(result):
+    print(f'[SUCCESS]')
+  else:
+    print(f'[FAILURE]')
+
+def run_tests(tests):
+  for name, args in tests:
+    run_test_case(name, *args)
 
 # Main class for armor, weapons and off-hands crafting calculations
 # TODO Should be generalized to ALL game items
 class Recipe:
   '''Item craft recipe'''
+
+  # Global table with base focus cost
+  # Located in config/, it means that should be configured just once
+  base_focus_cost = CSVTable()
+  base_focus_cost.read('config/base_focus_cost.csv')
+  # Global table with artifact item values
+  # Located in config/, it means that should be configured just once
+  artifact_item_values = CSVTable()
+  artifact_item_values.read('config/artifact_item_values.csv')
+
+  @classmethod
+  def configure(cls, *, base_focus_cost, artifact_item_values_fname):
+    if base_focus_cost is not None:
+      cls.base_focus_cost = base_focus_cost
+    if artifact_item_values is not None:
+      cls.artifact_item_values = artifact_item_values
   
-  def __init__(self, name, resources, artifact=None, is_royal=False
-               slot=None, machine=None, family=None):
+  def __init__(self, name, resources, *, artifact, is_royal,
+               slot, machine, family):
     '''Init Recipe'''
     self.name = assert_type(name, 'name', str)
     self.artifact = assert_type(artifact, 'artifact', str)
@@ -91,16 +127,14 @@ class Recipe:
     self.machine = assert_type(machine, 'machine', str)
     self.family = assert_type(family, 'family', str)
 
-  def compute_masteries(self, masteries):
-
   def cost_price(self, tier, ench, resources, *, 
-                 tax=0, retrate=0, artifacts=None, journals=None)
+                 tax=0, retrate=0, artifacts=None, journals=None):
     '''Calculate cost price'''
     # Arguments validation
     tier, ench = assert_tier_ench(tier, ench)
     resources = assert_type(resources, 'resources', CSVTable, convert=False)
 
-    err_no_data = f'Not enought data to compute \'{self.name} {tier}.{ench}\'')
+    err_no_data = f'Not enought data to compute \'{self.name} {tier}.{ench}\''
 
     # Cost price calculation
     result = np.float64(0.0)
@@ -118,7 +152,7 @@ class Recipe:
     result *= 1 - retrate
 
     # Add Artifacts and Royals
-    if self.artifact is not None:
+    if self.artifact != 'None':
       artifacts = assert_type(artifacts, 'artifacts', CSVTable, convert=False)
       art_prices = artifacts.get_row('{tier}')
       art_cost = art_prices.get(self.artifact, np.NAN)
@@ -148,26 +182,21 @@ class Recipe:
     '''
 
     # Taking into account taxes
-    result += g_const['item_value2food'] * 
-              self.item_value(tier, ench) / 100 * tax
-  
-    return result
+    result += g_const['item_value2food'] * self.item_value(tier, ench) / 100 * tax
 
-  # Global table with artifact item values
-  # Located in config/, it means that should be configured just once
-  artifact_item_values = CSVTable()
-  artifact_item_values.read('config/artifact_item_values.csv')
+    return result
 
   def item_value(self, tier, ench):
     '''Calculate item value'''
     # Arguments validation
-    tier, ench = assert_tier_ecnh(tier, ench)
+    tier, ench = assert_tier_ench(tier, ench)
 
-    resource_item_value = g_const['res_item_value_base'] * 
-                          g_const['res_item_value_coeff'] ** (tier + ench)
-    
+    resource_item_value = g_const['res_item_value_base'] * g_const['res_item_value_coeff'] ** (tier + ench - 1)
+    # FIXME Shoud be done inside CSVTable
+    resource_item_value = assert_type(resource_item_value, 'resource_item_value', float)
+
     # Resources item value
-    result = sum(self.resources.items()) * resource_item_value  
+    result = sum(self.resources.values()) * resource_item_value  
 
     # Artifact and Royal item value
     if self.artifact != 'None':
@@ -180,109 +209,93 @@ class Recipe:
       art_item_value = base_item_value * factor
       art_amount = 1
       if self.is_royal:
-        if self.slot == 'None':
-          die(f'Can\'t compute iteam value of \'{self.name} {tier}.{ench}\': slot is required')
         art_amount = g_const['royal'][self.slot][idx]
       result += art_amount * art_item_value
 
     return result
 
-  def fame(self, tier, ench, premium=False):
+  def fame(self, tier, ench):
     '''Calculate fame'''
     tier, ench = assert_tier_ench(tier, ench)
     idx = tier - g_const['min_tier']
-    base_fame = g_const['base_fame_coeffs'][idx] * sum(self.resources.items())
-    result = base_fame
-
-    if not self.is_royal:
-      result += ench * (base_fame - 7.5 * tier)
-      if self.artifact != 'None':
-        result += 500
-    else:
-      result += tier * g_const['royal_fame_coeffs'][idx]
-
-    if premium:
-      result *= 1.5
+    base_fame = g_const['base_fame_coeffs'][idx] * sum(self.resources.values())
+    result = base_fame * g_const['fame_factor'] ** ench
 
     return result
 
-  # Global table with base focus cost
-  # Located in config/, it means that should be configured just once
-  base_focus_cost = CSVTable()
-  base_focus_cost.read('config/base_focus_cost.csv')
+  @staticmethod
+  def compute_masteries(name, family, masteries):
+    # TODO
+    '''
+    family_masteries = masteries.get(family, None)
+    if family_masteries is None:
+      print('Can\'t compute masteries for \'{self.name} {tier}.{ench}\': family masteries is required')
+      return
 
-  def focus_cost(self, tier, ench, masteries=None):
-    '''Calculate focus cost'''
-    # TODO Should be computed with base_focus_cost table
-    # TODO Should be computed with masteries
+    focus_efficienty = 0
+    quality = 0
+    for name, coeffs in family_masteries.values():
+      if name == self.name:
+        focus_efficienty += (coeffs[1] + coeffs[2]) * coeffs[0]
+        quality += (coeffs[3] + coeffs[4]) * coeffs[0]
+      else:
+        focus_efficienty += coeffs[1] * coeffs[0]
+        quality += coeffs[1] * coeffs[0]
+
+    return focus_efficienty, quality
+    '''
+    raise NotImplementedError
+       
+  def focus_cost(self, tier, ench, focus_efficiency):
     tier, ench = assert_tier_ench(tier, ench)
-    masteries = assert_type
-    if self.slot == 'None':
-      die(f'Can\'t compute focus cost for \'{self.name} {tier}.{ench}\': slot is required')
     base_costs_list = base_focus_cost.get_row(f'{tier}.{ench}')
     base_cost = base_costs_list.get(self.slot, None)
     if base_cost is None:
       die(f'Can\'t get base focus cost for \'{self.slot} {tier}.{ench}\' from config')
-    if self.family == 'None':
-      die(f'Can\'t compute focus cost for \'{self.name} {tier}.{ench}\': family is required')
-    family_masteries = masteries.get(self.family, None)
-    if family_masteries is None:
-      print('Can\'t compute focus cost for \'{self.name} {tier}.{ench}\': family masteries is required')
 
-    self.focus_efficienty = 0
-    self.quality = 0
-    base_eff = g_const['base_mastery_eff']
-    base_qual = g_const['base_mastery_qual']
-    main_eff = g_const['main_mastery_eff']
-    main_qual = g_const['main_mastery_qual']
-    for name, mastery in masteries.values():
-      if name == self.name:
-        self.focus_efficienty += (base_eff + main_eff) * mastery
-        self.quality += (base_quak + main_qual) * mastery
-      else:
-        self.focus_efficienty += base_eff * mastery
-        self.quality += base_qual * mastery
-       
-  def focus_cost(self, 
-    denominator = (g_const['focus_cost_coeff'] ** g_const['focus_cost_divider'])
-    cost = self.focus_efficiency / denominator
+    power = focus_efficienty / g_const['focus_cost_divider']
+    denominator = g_const['focus_cost_coeff'] ** power
+    cost = base_cost / denominator
 
     return cost
-    
-  def quality(self, tier, ench, masteries=None)
+
+  def quality(self, tier, ench, masteries=None):
     # TODO Haven't found info about it yet
-    raise NotImplementedError()
+    # Here should be some code, that converts self.quality to chances
+    raise NotImplementedError
 
+  @staticmethod
+  def tests():
+    print('Running tests...')
+    resources = CSVTable()
+    resources.read('tests/test_resources.csv')
+    test = CSVTable()
+    test.read('tests/test_results.csv')
+    test_params = yaml_load('tests/test_params.yaml')
+    recipe_dict = yaml_load('tests/test_recipe.yaml')
+    recipe = Recipe(**recipe_dict)
+
+    for row in test.rows():
+      tier, ench = row.split('.')
+      cost_price = int(recipe.cost_price(tier, ench, resources, **test_params))
+      fame = int(recipe.fame(tier, ench))
+      item_value = int(recipe.item_value(tier, ench))
+      true_results = test.get_row(row)
+      if int(true_results['fame']) - fame > 1 or\
+         int(true_results['item_value']) - item_value > 1 or\
+         int(true_results['cost_price']) - cost_price > 1:
+        print(f'Test failed at \'{row}\'')
+        print(f'\tcost_price = {cost_price} (expected {true_results["cost_price"]})')
+        print(f'\tfame       = {fame} (expected {true_results["fame"]})')
+        print(f'\titem_value = {item_value} (expected {true_results["item_value"]})')
+        return False
+
+    print('All tests succeed!!!')
+    return True
+      
+    
 def main():
-  resources = CSVTable()
-  resources.read('resources.csv')
-  item_values = CSVTable()
-  item_values.read('item_values.csv')
-  config = yaml_load('config.yaml')
-  recipes = yaml_load('recipes.yaml')
-
-  print(config)
-  tax = config['tax']
-  retrate = config['retrate']
-
-  levels = resources.rows()
-  costprices = CSVTable(rows=levels)
-
-  for name, recipe_dict in recipes.items():
-    prices = {}
-    recipe = Recipe.from_dict(recipe_dict)
-    it_val = item_values.get_column(name)
-    for tier in levels:
-      res = resources.get_row(tier)
-      try:
-        price = recipe.cost_price(tax=it_val.get(tier, 0.0), retrate=retrate, **res)
-      except ValueError:
-        price = np.NAN
-        print(f'Can\'t compute price for \'{name} {tier}\'')
-      prices[tier] = price
-    costprices.add_column(name, prices)
-
-  costprices.write('prices.csv')
+  Recipe.tests()
       
 if __name__ == '__main__':
   main()

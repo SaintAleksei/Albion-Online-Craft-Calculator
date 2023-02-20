@@ -2,7 +2,7 @@
     Кинжалы: # Family
       Кинжал: # Name
         # List of resources for craft
-        resources: {'Слитки': 12, 'Брусья': 12}
+        resources: {'Слитки': 12, 'Кожа': 12}
         # Royal item flag
         is_royal: false    # Can be ommited
         # Artifact name
@@ -10,10 +10,10 @@
         # Name of machine for crafting, need for journals
         slot: 'right-hand' # Can be ommited
       Парные кинжалы:
-        resources: {'Слитки': 16, 'Брусья': 16}
+        resources: {'Слитки': 16, 'Кожа': 16}
         slot: 'two-handed'
       Когти:
-        resources: {'Слитки': 12, 'Брусья': 20}
+        resources: {'Слитки': 12, 'Кожа': 20}
         slot: 'two-handed'
       Кровопускатель:
         resources: {'Слитки': 16, 'Кожа': 8}

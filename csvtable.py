@@ -11,7 +11,7 @@ class CSVTable:
       rows = []
     self._col_names = columns
     self._row_names= rows 
-    self._data = np.ndarray((len(self._row_names), len(self._col_names)), dtype=np.float64)
+    self._data = np.ndarray((len(self._row_names), len(self._col_names)))
 
   def read(self, csv_file):
     with open(csv_file, 'r') as file_csv:
@@ -35,7 +35,7 @@ class CSVTable:
       writer = csv.writer(file_csv, delimiter=',')
       writer.writerow([None] + self._col_names)
       for name, row in zip(self._row_names, self._data):
-        writer.writerow([name] + row.tolist())
+        writer.writerow([name] + [int(num) for num in row.tolist()])
     
   def get_column(self, name):
     ret = {}
@@ -64,6 +64,20 @@ class CSVTable:
     self._row_names.append(name)
     new_row = np.array([v for v in row.values()])
     self._data = np.row_stack((self._data, new_row))
+
+  def delete_column(self, name):
+    idx = self._column_names.index(name)
+    to_return = {k: v for k, v in zip(self._col_names, self._data[:, idx])}
+    np.delete(self._data, idx, 1)
+    del self._col_names[idx]
+    return to_return
+
+  def delete_row(self, name):
+    idx = self._row_names.index(name)
+    to_return = {k: v for k, v in zip(self._row_names, self._data[idx])}
+    np.delete(self._data, idx, 0)
+    del self._row_names[idx]
+    return to_return
 
   def rows(self):
     return self._row_names.copy()
