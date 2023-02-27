@@ -1,69 +1,69 @@
-- Охотник: # Machine
-    Кинжалы: # Family
-      Кинжал: # Name
-        # List of resources for craft
-        resources: {'Слитки': 12, 'Кожа': 12}
-        # Royal item flag
-        is_royal: false    # Can be ommited
-        # Artifact name
-        artifact: null     # Can be ommited
-        # Name of machine for crafting, need for journals
-        slot: 'right-hand' # Can be ommited
-      Парные кинжалы:
-        resources: {'Слитки': 16, 'Кожа': 16}
-        slot: 'two-handed'
-      Когти:
-        resources: {'Слитки': 12, 'Кожа': 20}
-        slot: 'two-handed'
-      Кровопускатель:
-        resources: {'Слитки': 16, 'Кожа': 8}
-        artifact: 'Усиленное острие'
-        slot: 'right-hand'
-      Клык демона:
-        resources: {'Слитки': 12, 'Кожа': 12}
-        artifact: 'Сломанный демонический клык'
-        slot: 'right-hand'
-      Вестники смерти:
-        resources: {'Слитки': 16, 'Кожа': 16}
-        artifact: 'Ужасные клинки'
-        slot: 'two-handed'
-      Укротитель ярости:
-        resources: {'Слитки': 12, 'Кожа': 20}
-        artifact: 'Окровавленные дрвение обломки'
-        slot: 'two-handed'
-- Маг:
-    Сандалии:
-      Сандалии ученого:
-        resources: {'Ткань': 8}
-        slot: 'legs' 
-      Сандалии клирика:
-        resources: {'Ткань': 8}
-        slot: 'legs' 
-      Сандалии чародея:
-        resources: {'Ткань': 8}
-        slot: 'legs' 
-      Сандалии друида:
-        resources: {'Ткань': 8}
-        artifact: 'Друидские крепления'
-        slot: 'legs' 
-      Дьявольские сандалии:
-        resources: {'Ткань': 8}
-        artifact: 'Крепления из адской ткани'
-        slot: 'legs' 
-      Сандалии культиста:
-        resources: {'Ткань': 8}
-        artifact: 'Крепления соблазнения'
-        slot: 'legs' 
-      Сандалии из сказочной чешуи:
-        resources: {'Ткань': 8}
-        artifact: 'Чешуя сказочного дракона'
-        slot: 'legs' 
-      Сандалии чистоты:
-        resources: {'Ткань': 8}
-        artifact: 'Освященные крепления'
-        slot: 'legs' 
-      Королевские сандалии:
-        resources: {'Ткань': 8}
-        artifact: 'Королевский знак'
-        is_royal: True
-        slot: 'legs' 
+Охотник: # Machine
+  Кинжалы: # Family
+    Кинжал: # Name
+      # List of resources for craft
+      resources: {'Слитки': 12, 'Кожа': 12}
+      # Royal item flag
+      is_royal: false    # Can be ommited
+      # Artifact name
+      artifact: null     # Can be ommited
+      # Name of machine for crafting, need for journals
+      slot: 'right-hand' # Can be ommited
+    Парные кинжалы:
+      resources: {'Слитки': 16, 'Кожа': 16}
+      slot: 'two-handed'
+    Когти:
+      resources: {'Слитки': 12, 'Кожа': 20}
+      slot: 'two-handed'
+    Кровопускатель:
+      resources: {'Слитки': 16, 'Кожа': 8}
+      artifact: 'Усиленное острие'
+      slot: 'right-hand'
+    Клык демона:
+      resources: {'Слитки': 12, 'Кожа': 12}
+      artifact: 'Сломанный демонический клык'
+      slot: 'right-hand'
+    Вестники смерти:
+      resources: {'Слитки': 16, 'Кожа': 16}
+      artifact: 'Ужасные клинки'
+      slot: 'two-handed'
+    Укротитель ярости:
+      resources: {'Слитки': 12, 'Кожа': 20}
+      artifact: 'Окровавленные древние обломки'
+      slot: 'two-handed'
+Маг:
+  Сандалии:
+    Сандалии ученого:
+      resources: {'Ткань': 8}
+      slot: 'legs' 
+    Сандалии клирика:
+      resources: {'Ткань': 8}
+      slot: 'legs' 
+    Сандалии чародея:
+      resources: {'Ткань': 8}
+      slot: 'legs' 
+    Сандалии друида:
+      resources: {'Ткань': 8}
+      artifact: 'Друидские крепления'
+      slot: 'legs' 
+    Дьявольские сандалии:
+      resources: {'Ткань': 8}
+      artifact: 'Крепления из адской ткани'
+      slot: 'legs' 
+    Сандалии культиста:
+      resources: {'Ткань': 8}
+      artifact: 'Крепления соблазнения'
+      slot: 'legs' 
+    Сандалии из сказочной чешуи:
+      resources: {'Ткань': 8}
+      artifact: 'Чешуя сказочного дракона'
+      slot: 'legs' 
+    Сандалии чистоты:
+      resources: {'Ткань': 8}
+      artifact: 'Освященные крепления'
+      slot: 'legs' 
+    Королевские сандалии:
+      resources: {'Ткань': 8}
+      artifact: 'Королевский знак'
+      is_royal: True
+      slot: 'legs' 
