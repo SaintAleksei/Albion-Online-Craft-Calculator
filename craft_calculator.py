@@ -309,12 +309,21 @@ class Crafter:
           result['journals_amount'] = result['fame'] / g_const['fame_per_journal']
           if journals_buying is not None and journals_selling is not None:
             df = journals_buying
-            self.data['journals_buying'] = df[df['tier'] == tier].get(recipe.machine, np.NAN)
+            result['journals_buying'] = df[df['tier'] == tier].get(recipe.machine, np.NAN)
             df = journals_selling
-            self.data['journals_selling'] = df[df['tier'] == tier].get(recipe.machine, np.NAN)
+            result['journals_selling'] = df[df['tier'] == tier].get(recipe.machine, np.NAN)
           if item_prices is not None:
-    
-    
+            df = item_prices
+            sell_price = df[df['tier'] == tier & df['ench'] == ench].get(name, np.NAN)
+            cost_price = result['cost_price']
+            j_sell = result['journals_selling']
+            j_buy = result['journals_buying']
+            result['absolute_profit'] = sell_price + j_sell - cost_price - j_buy
+            result['relative_profit'] = result['absolute_profit'] / (cost_price + j_buy)
+            result['profit_per_focus'] = result['absolute_profit'] / result['focus']
+          result = pd.DataFrame([result])
+          self.data = pd.concat([self.data, result], ignore_index=True)
+          
   def analyze(self, *, tiers=None, enchs=None, items=None, sort_by=None
               profit_per_focus=None, absolute_profit=None, realtive_profit=None):
     pass
