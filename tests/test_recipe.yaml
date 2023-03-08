@@ -1,7 +1,0 @@
-machine: Охотник
-family: Кинжалы
-name: Кинжал
-resources: {'Слитки': 12, 'Кожа': 12}
-is_royal: False
-artifact: null
-slot: 'right-hand'
