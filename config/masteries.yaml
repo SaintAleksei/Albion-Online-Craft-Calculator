@@ -1,0 +1,39 @@
+Кинжалы:
+  Крафт: 
+    comm_eff: 30
+    comm_qual: 0.75
+  Кинжал:
+    comm_eff: 30
+    comm_qual: 0.75
+    own_eff: 250
+    own_qual: 6
+  Парные кинжалы:
+    comm_eff: 30
+    comm_qual: 0.75
+    own_eff: 250
+    own_qual: 6
+  Когти:
+    comm_eff: 30
+    comm_qual: 0.75
+    own_eff: 250
+    own_qual: 6
+  Кровопускатель:
+    comm_eff: 15
+    comm_qual: 0.38
+    own_eff: 250
+    own_qual: 6
+  Клык демона:
+    comm_eff: 15
+    comm_qual: 0.38
+    own_eff: 250
+    own_qual: 6
+  Вестники смерти:
+    comm_eff: 15
+    comm_qual: 0.38
+    own_eff: 250
+    own_qual: 6
+  Укротитель ярости:
+    comm_eff: 15
+    comm_qual: 0.38
+    own_eff: 250
+    own_qual: 6

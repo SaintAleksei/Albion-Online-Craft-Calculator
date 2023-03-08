@@ -1,0 +1,14 @@
+recipe:
+  name: 'Кровопускатель'
+  machine: 'Охотник'
+  family: 'Кинжалы'
+  resources: {'Слитки': 16, 'Кожа': 8}
+  artifact: 'Усиленное острие'
+  is_royal: false
+  slot: 'right-hand'
+tax: 300
+retrate: 0.479
+req_resources: {'Слитки': 67, 'Кожа': 34}
+req_amount: 7
+focus_efficiency: 20900
+quality: 511

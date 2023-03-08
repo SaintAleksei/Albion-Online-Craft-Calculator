@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import yaml
-import pd
+import pandas as pd
 import numpy as np
 import argparse
 import sys
@@ -14,6 +14,7 @@ import os
 # TODO Change CSVTable to Pandas Data Frame
 
 # Global constants, gathered dierctly from game
+# TODO Move it to config
 g_const =\
 {
   # Tiers
@@ -43,7 +44,7 @@ g_const =\
     'legs': [2, 4,  8,  8,  8],
   },
   # Journals fame coeffs
-  'fame_per_journal': [0, 0, 0, 3600, 7200, 14400, 28380, 58590],
+  'fame_per_journal': [3600, 7200, 14400, 28380, 58590],
   # List of supported slots
   'slots': ['head', 'body', 'legs', 'right-hand', 'left-hand', 'two-handed'],
   # Coeff to compute artifact item values 
@@ -93,7 +94,7 @@ class Recipe:
     result = 0.0
     res_prices = resources[(resources['tier'] == tier) & (resources['ench'] == ench)]
     if len(res_prices.index) > 1:
-      raise ValueError(f'Bad resources table: duplicated value of \'{tier}.{ench}\'')
+      idx, res_prices = res_prices.iterrows().__next__()
     for name, amount in self.resources.items():
       cost = res_prices.get(name, None)
       try:
@@ -111,7 +112,7 @@ class Recipe:
     if self.artifact != 'None':
       art_prices = artifacts[artifacts['tier'] == tier]
       if len(art_prices.index) > 1:
-        raise ValueError(f'Bad artifacts table: duplicated value of \'{tier}\'')
+        idx, art_prices = art_prices.iterrows().__next__()
       art_cost = art_prices.get(self.artifact, None)
       try:
         art_cost = int(art_cost)
@@ -146,9 +147,9 @@ class Recipe:
     # Artifact and Royal item value
     if self.artifact != 'None':
       if self.artifact_item_values is None:
-        die(f'{type(self) not configured: artifact_item_values is required')
-      art_item_values = self.artifact_item_values['item_value']
-      base_item_value = art_item_values.get(self.artifact, None)
+        die(f'{type(self)} not configured: artifact_item_values is required')
+      df = self.artifact_item_values
+      base_item_value =  df[df['name'] == self.artifact].get('item_value', None)
       if base_item_value is None:
         die(f'Can\'t get item value of \'{self.artifact}\' from config')
       idx = tier - g_const['min_tier']
@@ -164,15 +165,17 @@ class Recipe:
   def fame(self, tier, ench):
     '''Calculate fame'''
     # Tested
-    tier, ench = assert_tier_ench(tier, ench)
     idx = tier - g_const['min_tier']
     base_fame = g_const['base_fame_coeffs'][idx] * sum(self.resources.values())
     result = base_fame * g_const['fame_factor'] ** ench
 
     return int(result)
 
-  def compute_masteries(self, masteries_cfg, masteries):
-    # TODO Test it
+  def compute_masteries(self, masteries_cfg, masteries=None):
+    # Tested
+    if masteries is None:
+      return 0, 0
+
     family_masteries = masteries.get(self.family, None)
     if family_masteries is None:
       print('Can\'t compute masteries for \'{self.name}\': family masteries is required')
@@ -185,26 +188,26 @@ class Recipe:
 
     focus_efficienty = 0
     quality = 0
-    for name, coeff in family_masteries.items()
+    for name, coeff in family_masteries.items():
       mastery_cfg = family_masteries_cfg.get(name, None)
       if mastery_cfg is None:
         print('Can\'t compute masteries for \'{self.name}\': \'{name}\' mastery config is required')
         return None, None
 
       if name == self.name:
-        focus_efficienty += coeff * (mastery_cfg['own_eff'] + mastery['comm_eff'])
-        quality += coeff * (mastery_cfg['own_qual'] + mastery['comm_qual'])
+        focus_efficienty += coeff * (mastery_cfg['own_eff'] + mastery_cfg['comm_eff'])
+        quality += coeff * (mastery_cfg['own_qual'] + mastery_cfg['comm_qual'])
       else:
         focus_efficienty += coeff * mastery_cfg['comm_eff']
         quality += coeff * mastery_cfg['comm_qual']
 
-    return focus_efficienty, quality
+    return int(focus_efficienty), int(quality)
        
   def focus_cost(self, tier, ench, focus_efficiency):
-    # TODO Test it
+    # Tested
     df = self.base_focus_cost
-    if dfs is None:
-      die(f'{type(self) not configured: base_focus_cost is required')
+    if df is None:
+      die(f'{type(self)} not configured: base_focus_cost is required')
 
     base_costs_list = df[(df['tier'] == tier) & (df['ench'] == ench)]
     base_cost = base_costs_list.get(self.slot, None)
@@ -224,7 +227,7 @@ class Recipe:
       res_per_item = int(res_per_item)
       amount = 0
       while resources >= res_per_item:
-        num = int(resources / res_per_item) 
+        num = resources // res_per_item
         resources -= num * res_per_item
         resources += int(retrate * num * res_per_item)
         amount += num
@@ -233,6 +236,7 @@ class Recipe:
 
     result = {}
     for res_name, res_amount in self.resources.items():
+      result[res_name] = None
       start = int(res_amount * amount * retrate) - res_amount
       end = int(res_amount * amount * retrate) + res_amount
       for res_amt in range(start, end+1):
@@ -243,20 +247,13 @@ class Recipe:
 
     return result
 
-  def quality(self, quality)
+  def quality(self, quality):
     # TODO Haven't found info about it yet
     # Here should be some code, that converts quality to chances
     raise NotImplementedError
 
 class Crafter:
-  def __init__(self, *,\
-               resources, artifacts=None,\
-               config='config',\
-               tax=0, retrate=0,\
-               item_prices=None,\
-               masteries=None,\
-               journals_bying=None, journals_selling=None):
-    '''Doc'''
+  def __init__(self, config='config'):
     # Configuration
     base_focus_cost      = pd.read_csv(os.path.join(config, 'base_focus_cost.csv'))
     artifact_item_values = pd.read_csv(os.path.join(config, 'artifact_item_values.csv'))
@@ -280,157 +277,131 @@ class Crafter:
                                       slot=slot)
     self.masteries_cfg = yaml_load(os.path.join(config, 'masteries_cfg.yaml'))
 
-    # Calculations
-    self.data = pd.DataFrame()
-    self.data['name']             = pd.Series(dtype=object)
-    self.data['cost_price']       = pd.Series(dtype=object)
-    self.data['fame']             = pd.Series(dtype=object)
-    self.data['focus']            = pd.Series(dtype=object)
-    self.data['journals_amount']  = pd.Series(dtype=object)
+  def analyze_item(self, name, tier, ench,\
+                   resources=None, artifacts=None, tax=0, retrate=0,\
+                   item_prices=None, masteries=None, journals_bying=None, journals_selling=None):
+    '''Analyze everything that possible about item craft'''
+    # TODO Test it
+    recipe = self.recipes.get(name, None)
+    if recipe is None:
+      return None
+
+    result = {}
+    result['name'] = name
+    result['tier'] = tier
+    result['ench'] = ench
+  
+    cost_price = recipe.cost_price(tier, ench, resources,\
+                                   artifacts, tax, retrate)
+    if cost_price is None:
+      result['cost_price'] = np.NAN
+
+    focus_eff, qual = recipe.compute_masteries(self.masteries_cfg, masteries)
+    if focus_eff is None:
+      focus_eff = 0
+    if qual is None:
+      qual = 0
+    result['focus'] = recipe.focus_cost(tier, ench, focus_eff)
+    result['fame'] = recipe.fame(tier, ench)
+    min_tier = g_const['min_tier']
+    result['journals_amount'] = result['fame'] / g_const['fame_per_journal'][tier - min_tier]
+    result['fame_per_focus'] = result['fame'] / result['focus']
     if journals_buying is not None and journals_selling is not None:
-      self.data['journals_buying']  = pd.Series(dtype=object)
-      self.data['journals_selling'] = pd.Series(dtype=object)
+      df = journals_buying
+      result['journals_buying'] = df[df['tier'] == tier].get(recipe.machine, np.NAN) * result['journals_amount']
+      df = journals_selling
+      result['journals_selling'] = df[df['tier'] == tier].get(recipe.machine, np.NAN) * result['journals_amount']
     if item_prices is not None:
-      self.data['sell_price']       = pd.Series(dtype=object)
-      self.data['absolute_profit']  = pd.Series(dtype=object)
-      self.data['relative_profit']  = pd.Series(dtype=object)
-      self.data['profit_per_focus'] = pd.Series(dtype=object)
+      df = item_prices
+      sell_price = df[df['tier'] == tier & df['ench'] == ench].get(name, np.NAN)
+      cost_price = result['cost_price']
+      j_sell = result['journals_selling']
+      if j_sell == np.NAN:
+        j_sell = 0
+      j_buy = result['journals_buying']
+      if j_buy == np.NAN:
+        j_buy = 0
+      result['absolute_profit'] = sell_price + j_sell - cost_price - j_buy
+      result['relative_profit'] = result['absolute_profit'] / (cost_price + j_buy)
+      result['profit_per_focus'] = result['absolute_profit'] / result['focus']
+    result = pd.DataFrame([result])
 
-    for name, recipe in self.recipes.items():
-      for tier in range(g_const['min_tier'], g_const['max_tier'] + 1):
-        for ench in range(g_const['min_ench'], g_const['max_ench'] + 1):
-          result = {}
-          result['name'] = f'{name} {tier}.{ench}'
-          result['cost_price'] = recipe.cost_price(tier, ench, resources,\
-                                                   artifacts, tax, retrate)
-          focus_eff, qual = recipe.compute_masteries(self.masteries_cfg, masteries)
-          result['focus'] = recipe.focus_cost(tier, ench, focus_eff)
-          result['fame'] = recipe.fame(tier, ench)
-          result['journals_amount'] = result['fame'] / g_const['fame_per_journal']
-          if journals_buying is not None and journals_selling is not None:
-            df = journals_buying
-            result['journals_buying'] = df[df['tier'] == tier].get(recipe.machine, np.NAN)
-            df = journals_selling
-            result['journals_selling'] = df[df['tier'] == tier].get(recipe.machine, np.NAN)
-          if item_prices is not None:
-            df = item_prices
-            sell_price = df[df['tier'] == tier & df['ench'] == ench].get(name, np.NAN)
-            cost_price = result['cost_price']
-            j_sell = result['journals_selling']
-            j_buy = result['journals_buying']
-            result['absolute_profit'] = sell_price + j_sell - cost_price - j_buy
-            result['relative_profit'] = result['absolute_profit'] / (cost_price + j_buy)
-            result['profit_per_focus'] = result['absolute_profit'] / result['focus']
-          result = pd.DataFrame([result])
-          self.data = pd.concat([self.data, result], ignore_index=True)
-          
-  def analyze(self, *, tiers=None, enchs=None, items=None, sort_by=None
-              profit_per_focus=None, absolute_profit=None, realtive_profit=None):
-    pass
+    return result
 
-  def calculate(self, *, name, amount=1):
-    pass
+  def calculate_item(self, name, tier, ench,\
+                     amt=1, focus=None, money=None,\
+                     resources=None, artifacts=None, tax=0, retrate=0,\
+                     item_prices=None, masteries=None, journals_bying=None, journals_selling=None):
+    '''Compute everything that posible for required amount craft'''
+    recipe = self.recipes.get(name, None)
+    if recipe is None:
+      return None
+
+    # TODO
       
-  return price_table, fame_table, focus_table
+def test_case(test_dir, cfg_dir):
+  # Run test case for Recipe class
+  base_focus_cost      = pd.read_csv(os.path.join(cfg_dir, 'base_focus_cost.csv'))
+  artifact_item_values = pd.read_csv(os.path.join(cfg_dir, 'artifact_item_values.csv'))
+  masteries_cfg        = yaml_load(os.path.join(cfg_dir, 'masteries.yaml'))
 
-def test_case(test_dir):
-  resources = pd.read_csv(os.path.join(test_dir, 'test_resources.csv'))
-  artifacts = pd.read_csv(os.path.join(test_dir, 'test_artifacts.csv'))
-  test      = pd.read_csv(os.path.join(test_dir, 'test_results.csv'))
-  test_params = yaml_load(os.path.join(test_dir, 'test_params.yaml'))
-  recipe_dict = yaml_load(os.path.join(test_dir, 'test_recipe.yaml'))
-  req         = yaml_load(os.path.join(test_dir, 'test_requirements.yaml'))
-  recipe = Recipe(**recipe_dict)
+  data      = pd.read_csv(os.path.join(test_dir, 'data.csv'))
+  masteries = yaml_load(os.path.join(test_dir, 'masteries.yaml'))
+  params    = yaml_load(os.path.join(test_dir, 'params.yaml'))
 
-  for index, row in test.iterrows()
-    tier, ench = row.split('.')
-    cost_price = recipe.cost_price(tier, ench, resources, **test_params))
-    fame = recipe.fame(tier, ench))
-    item_value = recipe.item_value(tier, ench))
+  Recipe.configure(base_focus_cost, artifact_item_values)
+
+  recipe  = Recipe(**params['recipe'])
+  tax     = params['tax']
+  retrate = params['retrate']
+
+  focus_eff, qual = recipe.compute_masteries(masteries_cfg, masteries)
+
+  if focus_eff != params['focus_efficiency'] or\
+     qual != params['quality']:
+    print('Test failed at masteries computing:')
+    print(f'\tfocus_efficiency = {focus_eff} (expected {params["focus_efficiency"]})')
+    print(f'\tquality          = {qual} (expected {params["quality"]})')
+    return False
+
+  for index, row in data.iterrows():
+    tier = row['tier']
+    ench = row['ench']
+    
+    cost_price = recipe.cost_price(tier, ench, data,\
+                                   artifacts=data,\
+                                   tax=tax,\
+                                   retrate=retrate)
+    fame       = recipe.fame(tier, ench)
+    item_value = recipe.item_value(tier, ench)
+    focus_cost = recipe.focus_cost(tier, ench, focus_eff)
+
     true_results = row
-    if int(true_results['fame']) - fame > 1 or\
-       int(true_results['item_value']) - item_value > 1 or\
-       int(true_results['cost_price']) - cost_price > 1:
-      print(f'Test failed at \'{row}\'')
-      print(f'\tcost_price = {cost_price} (expected {true_results["cost_price"]})')
-      print(f'\tfame       = {fame} (expected {true_results["fame"]})')
-      print(f'\titem_value = {item_value} (expected {true_results["item_value"]})')
+    if row['fame'] - fame > 1 or\
+       row['focus_cost'] - focus_cost > 1 or\
+       row['item_value'] - item_value > 1 or\
+       row['cost_price'] - cost_price > 1:
+      print(f'Test failed at \'{tier}.{ench}\'')
+      print(f'\tfame       = {fame} (expected {row["fame"]})')
+      print(f'\tfocus      = {focus_cost} (expected {row["focus_cost"]})')
+      print(f'\tcost_price = {cost_price} (expected {row["cost_price"]})')
+      print(f'\titem_value = {item_value} (expected {row["item_value"]})')
       return False
 
-  if req is not None:
-    res_amt = req['res_amount']
-    retrate = req['retrate']
-    items_amt = req['items_amount']
-    res_amt_to_test = recipe.requirements(items_amt, retrate)
-    for name, amt in res_amt_to_test.items():
-      if amt != res_amt[name]:
-        print(f'Test failed at requirements \'{name}\'\n')
-        print(f'\tres_amt[{name}] = {amt} (expected {res_amt[name]})\n')
+  resources = params['req_resources']
+  amount    = params['req_amount']
+  res_to_test = recipe.requirements(amount, retrate)
+  for name, res in res_to_test.items():
+    if res != resources[name]:
+      print(f'Test failed at requirements \'{name}\'')
+      print(f'\tresources[{name}] = {res} (expected {resources[name]})')
       return False
   
-  # TODO Add materies and focus_cost tests
-
   return True
 
 def main():
-  if Recipe.test_case('tests'):
-    print('Test in \'tests\' succeed\n')
-  else:
-    print('Test in \'tests\' failed\n')
-
-  parser = argparse.ArgumentParser()
-  parser.add_argument("tax", help="Machine's tax", type=int)
-  parser.add_argument("retrate", help="Resource return rate", type=float)
-  args = parser.parse_args()
-
-
-  recipes = read_recipes('config/recipes.yaml')
-  resources = CSVTable()
-  resources.read('resources.csv')
-  artifacts = CSVTable()
-  artifacts.read('artifacts.csv')
-
-  price_table, fame_table, focus_table = compute_recipes(recipes,\
-                                                         resources,\
-                                                         args.tax,\
-                                                         args.retrate,\
-                                                         artifacts)
-
-  price_table.write('prices.csv')
-  fame_table.write('fame.csv')
-  focus_table.write('focus.csv')
-
-# ao-tool 
-#   craft 
-#     analyze 
-#       --items '' 
-#       --sort-by '' 
-#       --absolute-profit '' 
-#       --relative-profit '' 
-#       --profit-per-focus '' 
-#       --resources ''
-#       --artifacts ''
-#       --item-prices ''
-#       --journals-buying ''
-#       --journals-selling ''
-#       --masteries ''
-#       --config ''
-#       --tax ''
-#       --retrate ''
-#       task_file
-#     calculate
-#       --name ''
-#       --tax ''
-#       --retrate ''
-#       --amount ''
-#       --resources ''
-#       --artifacts ''
-#       --item-prices ''
-#       --journals-buying ''
-#       --journals-selling ''
-#       --masteries ''
-#       --config ''
-#       task_file
+  if test_case('tests/Кровопускатель', 'config'):
+    print("Test succeed")
 
 if __name__ == '__main__':
   main()
